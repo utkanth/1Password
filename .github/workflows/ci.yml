@@ -25,13 +25,18 @@ jobs:
           op --version
           echo "✅ 1Password CLI installed successfully."
 
-      - name: Sign in to 1Password CLI with Service Account Token
+      - name: Sign in to 1Password
         env:
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
         run: |
-          echo "🔐 Signing in to 1Password CLI (service account)..."
-          eval $(op signin --raw --account your-team.1password.com --service-account $OP_SERVICE_ACCOUNT_TOKEN)
-          echo "✅ Signed in successfully."
+          eval $(op signin --raw --account utkanth.1password.com --service-account $OP_SERVICE_ACCOUNT_TOKEN)
+
+      - name: Fetch secrets
+        run: |
+          API_KEY=$(op read "op://CI-CD Secrets/API_KEY/username")
+          DEPLOY_TOKEN=$(op read "op://CI-CD Secrets/DEPLOY_TOKEN/username")
+          echo "API_KEY: $API_KEY"
+          echo "DEPLOY_TOKEN: $DEPLOY_TOKEN"
 
       - name: Retrieve and print secrets from 1Password (for demo)
         run: |
