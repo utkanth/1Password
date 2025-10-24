@@ -32,7 +32,7 @@ jobs:
           echo "🔐 Signing in with 1Password service account..."
           
           # Correctly signing in using the service account token
-          eval $(op signin --account utkanth.1password.com --raw)
+          # eval $(op signin --raw)
           
           echo "✅ Signed in successfully."
 
