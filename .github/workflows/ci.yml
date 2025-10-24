@@ -7,7 +7,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest  # works with both 22.04 and 24.04
 
     steps:
       - name: Checkout repo
@@ -15,17 +15,11 @@ jobs:
 
       - name: Install 1Password CLI
         run: |
-          echo "🔧 Installing 1Password CLI..."
-          curl -fsSL https://downloads.1password.com/linux/keys/1password.asc | sudo tee /etc/apt/trusted.gpg.d/1password.asc
-          echo "deb [arch=amd64] https://downloads.1password.com/linux/debian stable main" | sudo tee /etc/apt/sources.list.d/1password.list
-          sudo apt update
-          sudo apt install -y op
-          echo "✅ 1Password CLI installed successfully."
-
-      - name: Verify 1Password CLI installation
-        run: |
+          echo "🔧 Installing 1Password CLI (official method)..."
+          curl -sS https://downloads.1password.com/linux/cli/op_install.sh | sh
+          sudo mv op /usr/local/bin/
           op --version
-          echo "✅ Verified that 1Password CLI is available."
+          echo "✅ 1Password CLI installed successfully."
 
       - name: Retrieve secrets from 1Password
         env:
