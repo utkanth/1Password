@@ -1,0 +1,33 @@
+name: CI with 1Password Secrets Automation for Interview
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Install 1Password CLI
+        run: |
+          curl -sS https://downloads.1password.com/cli/latest/linux_amd64/1password-cli.tar.gz | tar -xzf -
+          sudo mv op /usr/local/bin/
+
+      - name: Retrieve secrets from 1Password
+        env:
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+        run: |
+          echo "Fetching secrets from 1Password..."
+          API_KEY=$(op read "op://demo-ci-secrets/API_KEY")
+          DEPLOY_TOKEN=$(op read "op://demo-ci-secrets/DEPLOY_TOKEN")
+          echo "API_KEY is fetched securely (hidden)"
+          echo "::add-mask::$API_KEY"
+          echo "::add-mask::$DEPLOY_TOKEN"
+
+      - name: Use the secret in an app step
+        run: |
+          echo "Using secrets in a simulated build..."
+          echo "Connecting to database with secure credentials"
