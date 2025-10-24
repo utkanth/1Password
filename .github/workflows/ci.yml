@@ -11,10 +11,12 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Install 1Password CLI
+      - name: Install 1Password CLI (via apt)
         run: |
-          curl -sS https://downloads.1password.com/cli/latest/linux_amd64/1password-cli.tar.gz | tar -xzf -
-          sudo mv op /usr/local/bin/
+          curl -fsSL https://downloads.1password.com/linux/keys/1password.asc | sudo tee /etc/apt/trusted.gpg.d/1password.asc
+          echo "deb [arch=amd64] https://downloads.1password.com/linux/debian stable main" | sudo tee /etc/apt/sources.list.d/1password.list
+          sudo apt update
+          sudo apt install -y op
 
       - name: Retrieve secrets from 1Password
         env:
