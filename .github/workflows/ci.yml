@@ -30,8 +30,8 @@ jobs:
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
         run: |
           echo "🔐 Fetching secrets from 1Password..."
-          API_KEY=$(op read "op://demo-ci-secrets/API_KEY")
-          DEPLOY_TOKEN=$(op read "op://demo-ci-secrets/DEPLOY_TOKEN")
+          API_KEY=$(op read "op://1Password PoC/API_KEY/credential")
+          DEPLOY_TOKEN=$(op read "op://1Password PoC/DEPLOY_TOKEN/credential")
           echo "::add-mask::$API_KEY"
           echo "::add-mask::$DEPLOY_TOKEN"
           echo "✅ Secrets fetched successfully."
