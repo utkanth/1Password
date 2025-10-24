@@ -3,7 +3,7 @@ name: CI with 1Password Secrets Automation for Interview
 on:
   push:
     branches: [ main ]
-  workflow_dispatch:  # allows manual trigger for demo
+  workflow_dispatch: # allows manual trigger
 
 jobs:
   build:
@@ -25,24 +25,30 @@ jobs:
           op --version
           echo "✅ 1Password CLI installed successfully."
 
-      - name: Sign in and fetch secrets from 1Password
+      - name: Sign in to 1Password (service account)
         env:
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
         run: |
           echo "🔐 Signing in with 1Password service account..."
-          eval $(op signin --raw --account utkanth.1password.com --service-account $OP_SERVICE_ACCOUNT_TOKEN)
+          eval $(op signin utkanth.1password.com --raw)
           echo "✅ Signed in successfully."
 
+      - name: Fetch secrets and mask them
+        run: |
           echo "🔐 Fetching secrets..."
-          API_KEY=$(op read "op://1password PoC/API_KEY/username")
-          DEPLOY_TOKEN=$(op read "op://1password PoC/DEPLOY_TOKEN/username")
+          API_KEY=$(op read "op://1Password PoC/API_KEY/username")
+          DEPLOY_TOKEN=$(op read "op://1Password PoC/DEPLOY_TOKEN/username")
+
+          # Mask secrets in logs
           echo "::add-mask::$API_KEY"
           echo "::add-mask::$DEPLOY_TOKEN"
+
+          # Print masked placeholders for demo
           echo "API_KEY: $API_KEY"
           echo "DEPLOY_TOKEN: $DEPLOY_TOKEN"
           echo "✅ Secrets fetched successfully."
 
-      - name: Use the secrets in a simulated build
+      - name: Use secrets in a simulated build step
         run: |
           echo "🚀 Using secrets in a simulated build..."
           echo "Connecting to database with secure credentials..."
