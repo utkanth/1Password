@@ -34,8 +34,8 @@ jobs:
           echo "✅ Signed in successfully."
 
           echo "🔐 Fetching secrets..."
-          API_KEY=$(op read "op://CI-CD Secrets/API_KEY/username")
-          DEPLOY_TOKEN=$(op read "op://CI-CD Secrets/DEPLOY_TOKEN/username")
+          API_KEY=$(op read "op://1password PoC/API_KEY/username")
+          DEPLOY_TOKEN=$(op read "op://1password PoC/DEPLOY_TOKEN/username")
           echo "API_KEY: $API_KEY"
           echo "DEPLOY_TOKEN: $DEPLOY_TOKEN"
           echo "✅ Secrets fetched successfully."
