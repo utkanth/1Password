@@ -3,20 +3,24 @@ name: CI with 1Password Secrets Automation for Interview
 on:
   push:
     branches: [ main ]
-  workflow_dispatch:  # allows manual "Run workflow" button
+  workflow_dispatch:  # manual trigger for demo
 
 jobs:
   build:
-    runs-on: ubuntu-latest  # works with both 22.04 and 24.04
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Install 1Password CLI
+      - name: Install dependencies
+        run: sudo apt update && sudo apt install -y unzip curl
+
+      - name: Install 1Password CLI (direct download)
         run: |
-          echo "🔧 Installing 1Password CLI (official method)..."
-          curl -sS https://downloads.1password.com/linux/cli/op_install.sh | sh
+          echo "🔧 Downloading and installing 1Password CLI..."
+          curl -sSL https://cache.agilebits.com/dist/1P/op2/pkg/v2.30.3/op_linux_amd64_v2.30.3.zip -o op.zip
+          unzip -q op.zip
           sudo mv op /usr/local/bin/
           op --version
           echo "✅ 1Password CLI installed successfully."
