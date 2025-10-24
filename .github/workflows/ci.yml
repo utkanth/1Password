@@ -30,7 +30,7 @@ jobs:
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
         run: |
           echo "🔐 Signing in with 1Password service account..."
-          eval $(op signin --raw)
+          eval $(op signin --raw --token $OP_SERVICE_ACCOUNT_TOKEN)
           echo "✅ Signed in successfully."
 
           echo "🔐 Fetching secrets..."
