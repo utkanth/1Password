@@ -27,12 +27,11 @@ jobs:
 
       - name: Sign in, fetch and write secrets to 1Password (same session)
         env:
-          # Authentication is handled implicitly by the presence of this token.
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
         run: |
           echo "🔐 Authenticating using OP_SERVICE_ACCOUNT_TOKEN..."
 
-          # --- READ/FETCH SECRETS (Already Correct) ---
+          # --- READ/FETCH SECRETS (Working) ---
           echo "🔐 Fetching secrets..."
           API_KEY=$(op read "op://1password PoC/API_KEY/username")
           DEPLOY_TOKEN=$(op read "op://1password PoC/DEPLOY_TOKEN/username")
@@ -41,25 +40,33 @@ jobs:
           echo "✅ Secrets fetched successfully."
           
           # ----------------------------------------------------------------------
-          # --- WRITE/CREATE NEW SECRET (Using correct positional assignment) ---
+          # --- WRITE/CREATE NEW SECRET (Using Robust JSON Pipe Method) ---
           # ----------------------------------------------------------------------
-          echo "✨ Creating a new 'CI_TEMP_LOGIN' item using positional assignments..."
-          # Use positional assignments: FieldLabel=Value. 
-          # Note: The CLI uses 'username' and 'password' as the field labels for a 'login' category.
-          op item create \
-            --vault "1password PoC" \
-            --category login \
-            --title "CI_TEMP_LOGIN" \
-            "username=ci_runner_user" \
-            "password=temp_secret_$(date +%s)" # Note the use of "password" as the field label
+          NEW_PASSWORD="ci_secret_$(date +%s)"
+
+          echo "✨ Creating a new 'CI_TEMP_LOGIN' item using JSON pipe..."
+          
+          # Use a HEREDOC to create a valid JSON item structure and pipe it to op item create
+          # This guarantees the CLI receives valid input and bypasses shell parsing errors.
+          op item create --vault "1password PoC" - << EOF
+          {
+            "title": "CI_TEMP_LOGIN",
+            "category": "LOGIN",
+            "fields": [
+              {"id": "username", "value": "ci_runner_user"},
+              {"id": "password", "value": "${NEW_PASSWORD}"}
+            ]
+          }
+          EOF
             
           echo "✅ New secret 'CI_TEMP_LOGIN' created successfully."
           
           # ----------------------------------------------------------------------
-          # --- EDIT/UPDATE EXISTING SECRET (Using correct positional assignment) ---
+          # --- EDIT/UPDATE EXISTING SECRET (Using Positional Edit) ---
           # ----------------------------------------------------------------------
           echo "✏️ Updating the 'CI_TEMP_LOGIN' item..."
-          # Update the item using the same FieldLabel=Value format.
+          # The edit command often works reliably with positional arguments, 
+          # as it is not ambiguous about looking for piped input.
           op item edit "CI_TEMP_LOGIN" \
             --vault "1password PoC" \
             "username=updated_user_$(date +%s)" \
