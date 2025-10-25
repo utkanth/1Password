@@ -27,13 +27,14 @@ jobs:
 
       - name: Sign in, fetch and write secrets to 1Password (same session)
         env:
-          # The Service Account Token handles authentication implicitly.
+          # Authentication is handled implicitly by the presence of this token.
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
         run: |
           echo "🔐 Authenticating using OP_SERVICE_ACCOUNT_TOKEN..."
 
           # --- READ/FETCH SECRETS ---
           echo "🔐 Fetching secrets..."
+          # This command format is already correct.
           API_KEY=$(op read "op://1password PoC/API_KEY/username")
           DEPLOY_TOKEN=$(op read "op://1password PoC/DEPLOY_TOKEN/username")
           echo "API_KEY: $API_KEY"
@@ -41,20 +42,32 @@ jobs:
           echo "✅ Secrets fetched successfully."
           
           # ----------------------------------------------------------------------
-          # --- WRITE/CREATE NEW SECRET (Single-line Command for Robustness) ---
+          # --- WRITE/CREATE NEW SECRET (Using direct flags as per documentation) ---
           # ----------------------------------------------------------------------
-          echo "✨ Creating a new 'TEMP_SECRET' Login item..."
-          op item create --vault "1password PoC" --title "TEMP_SECRET" --category "Login" "username=temporary_user" "password=a_new_secret_value_$(date +%s)"
+          echo "✨ Creating a new 'CI_TEMP_LOGIN' item using direct flags..."
+          # Using --username and --password (or --generate-password) flags 
+          # is the correct way for the Login category.
+          op item create \
+            --vault "1password PoC" \
+            --category login \
+            --title "CI_TEMP_LOGIN" \
+            --username "ci_runner_user" \
+            --password "temp_secret_$(date +%s)"
             
-          echo "✅ New secret 'TEMP_SECRET' created successfully."
+          echo "✅ New secret 'CI_TEMP_LOGIN' created successfully."
           
           # ----------------------------------------------------------------------
-          # --- EDIT/UPDATE EXISTING SECRET (Single-line Command for Robustness) ---
+          # --- EDIT/UPDATE EXISTING SECRET (Using direct flags) ---
           # ----------------------------------------------------------------------
-          echo "✏️ Updating the username field for 'API_KEY'..."
-          op item edit "API_KEY" --vault "1password PoC" "username=UpdatedUser_$(date +%s)"
+          echo "✏️ Updating the 'CI_TEMP_LOGIN' item..."
+          # You must use the UUID or exact title of the item you want to edit.
+          # We'll edit the item we just created.
+          op item edit "CI_TEMP_LOGIN" \
+            --vault "1password PoC" \
+            --username "updated_user_$(date +%s)" \
+            --tags ci-updated,demo
             
-          echo "✅ Secret 'API_KEY' updated successfully."
+          echo "✅ Secret 'CI_TEMP_LOGIN' updated successfully."
 
       - name: Manual trigger confirmation
         if: ${{ github.event_name == 'workflow_dispatch' }}
