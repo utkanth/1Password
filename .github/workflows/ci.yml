@@ -25,13 +25,13 @@ jobs:
           op --version
           echo "✅ 1Password CLI installed successfully."
 
-      - name: Sign in and fetch secrets from 1Password
+      - name: Sign in, fetch and write secrets to 1Password (same session)
         env:
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
         run: |
           echo "🔐 Signing in with 1Password service account..."
           
-          # Correctly signing in using the service account token
+          # Sign in using the service account token
           # eval $(op signin --raw)
           
           echo "✅ Signed in successfully."
@@ -43,11 +43,17 @@ jobs:
           echo "DEPLOY_TOKEN: $DEPLOY_TOKEN"
           echo "✅ Secrets fetched successfully."
 
-      - name: Use the secrets in a simulated build
-        run: |
-          echo "🚀 Using secrets in a simulated build..."
-          echo "Connecting to database with secure credentials..."
-          echo "✅ Build simulation complete."
+          # Write the fetched secrets back to the vault
+          echo "🔐 Writing secrets back to 1Password..."
+
+          # Writing new items (if they don't exist)
+          op create item "API Credential" username=$API_USERNAME password=$API_KEY --vault "1password PoC"
+          op create item "Deploy Token" username=$DEPLOY_USERNAME password=$DEPLOY_TOKEN --vault "1password PoC"
+          
+          # Edit the existing API_KEY to change its value to 'successedit'
+          op edit item "API Credential" username=$API_USERNAME password="successedit" --vault "1password PoC"
+          
+          echo "✅ Secrets written and updated successfully."
 
       - name: Manual trigger confirmation
         if: ${{ github.event_name == 'workflow_dispatch' }}
