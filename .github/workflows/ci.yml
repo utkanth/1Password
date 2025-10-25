@@ -47,8 +47,8 @@ jobs:
           echo "🔐 Writing secrets back to 1Password..."
 
           # Create new items if they don't exist
-          op item create "API Credential" username="username" password="$API_KEY" --vault "1password PoC"
-          op item create "Deploy Token" username="deployuser" password="$DEPLOY_TOKEN" --vault "1password PoC"
+          op item create title="API Credential" username="username" password="$API_KEY" --vault "1password PoC"
+          op item create title="Deploy Token" username="deployuser" password="$DEPLOY_TOKEN" --vault "1password PoC"
           
           # Modify the existing API_KEY to change its value to 'successedit'
           op item edit "API Credential" username="username" password="successedit" --vault "1password PoC"
