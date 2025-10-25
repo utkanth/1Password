@@ -32,9 +32,8 @@ jobs:
         run: |
           echo "🔐 Authenticating using OP_SERVICE_ACCOUNT_TOKEN..."
 
-          # --- READ/FETCH SECRETS ---
+          # --- READ/FETCH SECRETS (Already Correct) ---
           echo "🔐 Fetching secrets..."
-          # This command format is already correct.
           API_KEY=$(op read "op://1password PoC/API_KEY/username")
           DEPLOY_TOKEN=$(op read "op://1password PoC/DEPLOY_TOKEN/username")
           echo "API_KEY: $API_KEY"
@@ -42,29 +41,28 @@ jobs:
           echo "✅ Secrets fetched successfully."
           
           # ----------------------------------------------------------------------
-          # --- WRITE/CREATE NEW SECRET (Using direct flags as per documentation) ---
+          # --- WRITE/CREATE NEW SECRET (Using correct positional assignment) ---
           # ----------------------------------------------------------------------
-          echo "✨ Creating a new 'CI_TEMP_LOGIN' item using direct flags..."
-          # Using --username and --password (or --generate-password) flags 
-          # is the correct way for the Login category.
+          echo "✨ Creating a new 'CI_TEMP_LOGIN' item using positional assignments..."
+          # Use positional assignments: FieldLabel=Value. 
+          # Note: The CLI uses 'username' and 'password' as the field labels for a 'login' category.
           op item create \
             --vault "1password PoC" \
             --category login \
             --title "CI_TEMP_LOGIN" \
-            --username "ci_runner_user" \
-            --password "temp_secret_$(date +%s)"
+            "username=ci_runner_user" \
+            "password=temp_secret_$(date +%s)" # Note the use of "password" as the field label
             
           echo "✅ New secret 'CI_TEMP_LOGIN' created successfully."
           
           # ----------------------------------------------------------------------
-          # --- EDIT/UPDATE EXISTING SECRET (Using direct flags) ---
+          # --- EDIT/UPDATE EXISTING SECRET (Using correct positional assignment) ---
           # ----------------------------------------------------------------------
           echo "✏️ Updating the 'CI_TEMP_LOGIN' item..."
-          # You must use the UUID or exact title of the item you want to edit.
-          # We'll edit the item we just created.
+          # Update the item using the same FieldLabel=Value format.
           op item edit "CI_TEMP_LOGIN" \
             --vault "1password PoC" \
-            --username "updated_user_$(date +%s)" \
+            "username=updated_user_$(date +%s)" \
             --tags ci-updated,demo
             
           echo "✅ Secret 'CI_TEMP_LOGIN' updated successfully."
