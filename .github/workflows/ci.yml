@@ -46,13 +46,17 @@ jobs:
           # Write the fetched secrets back to 1Password
           echo "🔐 Writing secrets back to 1Password..."
 
-          # Create new items if they don't exist
-          op item create title="API Credential" username="username" password="$API_KEY" --vault "1password PoC"
-          op item create title="Deploy Token" username="deployuser" password="$DEPLOY_TOKEN" --vault "1password PoC"
-          
-          # Modify the existing API_KEY to change its value to 'successedit'
-          op item edit "API Credential" username="username" password="successedit" --vault "1password PoC"
-          
+          # Create a new item (if it doesn't exist) with the username value as API_KEY
+          op item create \
+            --title "NEW_API_KEY" \
+            --vault "1password PoC" \
+            'username=NEW_API_KEY'  # Assuming the item has the key "username" with a value of "API_KEY"
+
+          # Edit the existing item by updating the username value to "API_KEYedited123"
+          op item edit "API_KEY" \
+            --vault "1password PoC" \
+            'username=API_KEYedited123'
+
           echo "✅ Secrets written and updated successfully."
 
       - name: Manual trigger confirmation
