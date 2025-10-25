@@ -25,7 +25,7 @@ jobs:
           op --version
           echo "✅ 1Password CLI installed successfully."
 
-      - name: Sign in, fetch, create, and update existing API_KEY with today's date
+      - name: Sign in, fetch, create, update, and delete secrets
         env:
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
         run: |
@@ -34,32 +34,33 @@ jobs:
           # Define item names and vault name
           ITEM_TO_UPDATE="API_KEY"
           VAULT="1password PoC"
-          DEPLOY_TOKEN_ITEM="DEPLOY_TOKEN"
+          DEPLOY_TOKEN_ITEM="DEPLOY_TOKEN" # This is the item we will delete
+          TEMP_ITEM_TO_KEEP="CI_TEMP_LOGIN" # Item created and preserved for demo
 
           # ----------------------------------------------------------------------
-          # --- 1. READ/FETCH SECRETS (Initial Read and Clear Display) ---
+          # --- 1. READ/FETCH SECRETS (Initial Read) ---
           # ----------------------------------------------------------------------
           echo "🔐 Fetching initial secrets..."
           
-          # Read API_KEY value and display first 10 characters for confirmation
+          # Read API_KEY value and display first 10 characters
           API_KEY_CURRENT_VALUE=$(op read "op://${VAULT}/${ITEM_TO_UPDATE}/username")
           echo "API_KEY initial value: ${API_KEY_CURRENT_VALUE:0:10}..." 
           
-          # Read DEPLOY_TOKEN value and display first 10 characters for confirmation
+          # Read DEPLOY_TOKEN value and display first 10 characters
           DEPLOY_TOKEN_VALUE=$(op read "op://${VAULT}/${DEPLOY_TOKEN_ITEM}/username")
           echo "DEPLOY_TOKEN initial value: ${DEPLOY_TOKEN_VALUE:0:10}..."
           
           echo "✅ Initial secrets fetched successfully."
           
           # ----------------------------------------------------------------------
-          # --- 2. WRITE/CREATE NEW SECRET (Demonstrates successful WRITE operation) ---
+          # --- 2. WRITE/CREATE NEW SECRET (Item remains for demonstration) ---
           # ----------------------------------------------------------------------
           NEW_PASSWORD="ci_secret_$(date +%s)"
-          echo "✨ Creating a temporary 'CI_TEMP_LOGIN' item (Successful test)..."
+          echo "✨ Creating a temporary '${TEMP_ITEM_TO_KEEP}' item (Will remain in vault)..."
           
           op item create --vault "${VAULT}" - << EOF
           {
-            "title": "CI_TEMP_LOGIN",
+            "title": "${TEMP_ITEM_TO_KEEP}",
             "category": "LOGIN",
             "fields": [
               {"id": "username", "value": "ci_runner_user"},
@@ -67,38 +68,35 @@ jobs:
             ]
           }
           EOF
-          echo "✅ New secret 'CI_TEMP_LOGIN' created successfully."
+          echo "✅ New secret '${TEMP_ITEM_TO_KEEP}' created successfully."
           
           # ----------------------------------------------------------------------
-          # --- 3. ROTATE/UPDATE EXISTING API_KEY (JSON Method with Expiry Fix) ---
+          # --- 3. ROTATE/UPDATE EXISTING API_KEY (Update) ---
           # ----------------------------------------------------------------------
           TODAYS_DATE=$(date +%Y-%m-%d)
-          
-          # Logic to strip any previous date suffix before appending the new date.
           BASE_API_KEY_VALUE=$(echo "$API_KEY_CURRENT_VALUE" | sed 's/_[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}$//')
           NEW_API_KEY_VALUE="${BASE_API_KEY_VALUE}_${TODAYS_DATE}"
           
           echo "✏️ Updating the '${ITEM_TO_UPDATE}' to append date: ${TODAYS_DATE}..."
 
-          # a) Fetch the current item's JSON
           CURRENT_JSON=$(op item get "${ITEM_TO_UPDATE}" --vault "${VAULT}" --format json)
-          
-          # b) Use jq to update ONLY the 'username' field's value. 
-          #    The 'else .' passes all other fields (including date fields) unmodified to prevent reset.
           UPDATED_JSON=$(echo "${CURRENT_JSON}" | jq \
             --arg new_val "$NEW_API_KEY_VALUE" \
-            '.fields |= map(
-              if .id == "username" then 
-                .value = $new_val 
-              else 
-                . 
-              end
-            )')
+            '.fields |= map(if .id == "username" then .value = $new_val else . end)')
 
-          # c) Pipe the modified JSON back to the edit command
           echo "${UPDATED_JSON}" | op item edit "${ITEM_TO_UPDATE}" --vault "${VAULT}" -
             
           echo "✅ Secret '${ITEM_TO_UPDATE}' rotated and updated successfully."
+
+          # ----------------------------------------------------------------------
+          # --- 4. DELETE EXISTING SECRET (High-Impact Deletion) ---
+          # ----------------------------------------------------------------------
+          echo "🔥 Permanently deleting secret: '${DEPLOY_TOKEN_ITEM}'..."
+          
+          # Use op item delete with the --confirm flag for non-interactive deletion
+          op item delete "${DEPLOY_TOKEN_ITEM}" --vault "${VAULT}" --confirm
+          
+          echo "✅ Secret '${DEPLOY_TOKEN_ITEM}' permanently deleted."
 
       - name: Manual trigger confirmation
         if: ${{ github.event_name == 'workflow_dispatch' }}
