@@ -29,89 +29,40 @@ jobs:
         env:
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
         run: |
-          set -e  # Exit on any error for better debugging
           echo "🔐 Signing in with 1Password service account..."
-          
-          # Verify token is set
-          if [ -z "$OP_SERVICE_ACCOUNT_TOKEN" ]; then
-            echo "❌ Error: OP_SERVICE_ACCOUNT_TOKEN is not set."
-            exit 1
-          fi
-          echo "✅ OP_SERVICE_ACCOUNT_TOKEN is set (value obfuscated)."
-
-          # Sign in using the service account token explicitly
-          SESSION_TOKEN=$(op signin --account service-account --token "$OP_SERVICE_ACCOUNT_TOKEN" --raw)
-          if [ $? -ne 0 ]; then
-            echo "❌ Error: Failed to sign in with 1Password service account."
-            exit 1
-          fi
-          export OP_SESSION_service_account="$SESSION_TOKEN"
+          # Sign in using the service account token, capturing the session token
+          eval $(op signin --raw) 
           
           echo "✅ Signed in successfully."
 
+          # --- READ/FETCH SECRETS ---
           echo "🔐 Fetching secrets..."
-          API_KEY=$(op read "op://1password PoC/API_KEY/username" 2> read_error.log)
-          if [ $? -ne 0 ]; then
-            echo "❌ Error fetching API_KEY: $(cat read_error.log)"
-            exit 1
-          fi
-          DEPLOY_TOKEN=$(op read "op://1password PoC/DEPLOY_TOKEN/username" 2> read_error.log)
-          if [ $? -ne 0 ]; then
-            echo "❌ Error fetching DEPLOY_TOKEN: $(cat read_error.log)"
-            exit 1
-          fi
+          API_KEY=$(op read "op://1password PoC/API_KEY/username")
+          DEPLOY_TOKEN=$(op read "op://1password PoC/DEPLOY_TOKEN/username")
           echo "API_KEY: $API_KEY"
           echo "DEPLOY_TOKEN: $DEPLOY_TOKEN"
           echo "✅ Secrets fetched successfully."
-
-          # Write the fetched secrets back to 1Password
-          echo "🔐 Writing secrets back to 1Password..."
-
-          # Create a new API_KEY item (if it doesn't exist) - using HJSON template
-          if ! op item list --vault "1password PoC" --title "NEW_API_KEY" >/dev/null 2>&1; then
-            echo "📝 Creating new item 'NEW_API_KEY'..."
-            op item create \
-              --vault "1password PoC" \
-              --category Login \
-              --tags "demo,ci" \
-              --template '{
-                title: "NEW_API_KEY",
-                sections: [{ name: "General" }],
-                fields: [
-                  { id: "username", value: "demo_user" },
-                  { id: "password", value: "new_api_key_value_here_$(date +%s)" }
-                ]
-              }' < /dev/null 2> create_error.log
-            if [ $? -ne 0 ]; then
-              echo "❌ Error creating item 'NEW_API_KEY': $(cat create_error.log)"
-              exit 1
-            fi
-            echo "✅ Item 'NEW_API_KEY' created successfully."
-          else
-            echo "ℹ️ Item 'NEW_API_KEY' already exists, skipping creation."
-          fi
-
-          # Edit the existing API_KEY item (only if it exists) and update the username field
-          if op item list --vault "1password PoC" --title "API_KEY" >/dev/null 2>&1; then
-            echo "✏️ Editing existing item 'API_KEY'..."
-            op item edit \
-              --vault "1password PoC" \
-              "API_KEY" \
-              --template '{
-                fields: [
-                  { id: "username", value: "API_KEY_edited_123_$(date +%s)" }
-                ]
-              }' < /dev/null 2> edit_error.log
-            if [ $? -ne 0 ]; then
-              echo "❌ Error editing item 'API_KEY': $(cat edit_error.log)"
-              exit 1
-            fi
-            echo "✅ Item 'API_KEY' updated successfully."
-          else
-            echo "⚠️ Item 'API_KEY' not found, skipping edit."
-          fi
-
-          echo "✅ Secrets written and updated successfully."
+          
+          # --- WRITE/CREATE NEW SECRET ---
+          echo "✨ Creating a new 'TEMP_SECRET' Login item..."
+          # Creates a new Login item named 'TEMP_SECRET' with a username and password field.
+          op item create \
+            --vault "1password PoC" \
+            --title "TEMP_SECRET" \
+            --category "Login" \
+            "username=temporary_user" \
+            "password=a_new_secret_value_$(date +%s)"
+            
+          echo "✅ New secret 'TEMP_SECRET' created successfully."
+          
+          # --- EDIT/UPDATE EXISTING SECRET ---
+          echo "✏️ Updating the username field for 'API_KEY'..."
+          # Edits the existing item named 'API_KEY' to change its 'username' field.
+          op item edit "API_KEY" \
+            --vault "1password PoC" \
+            "username=UpdatedUser_$(date +%s)"
+            
+          echo "✅ Secret 'API_KEY' updated successfully."
 
       - name: Manual trigger confirmation
         if: ${{ github.event_name == 'workflow_dispatch' }}
