@@ -25,22 +25,28 @@ jobs:
           op --version
           echo "✅ 1Password CLI installed successfully."
 
-      - name: Sign in, fetch, create, and edit secrets with Service Account
+      - name: Sign in, fetch, create, and update existing API_KEY with today's date
         env:
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
         run: |
           echo "🔐 Authenticating using OP_SERVICE_ACCOUNT_TOKEN..."
           
-          # --- READ/FETCH SECRETS (Working) ---
-          echo "🔐 Fetching secrets..."
-          API_KEY=$(op read "op://1password PoC/API_KEY/username")
-          DEPLOY_TOKEN=$(op read "op://1password PoC/DEPLOY_TOKEN/username")
-          echo "✅ Secrets fetched successfully."
+          # Define item names and vault name
+          ITEM_TO_UPDATE="API_KEY"
+          VAULT="1password PoC"
+
+          # --- 1. READ/FETCH SECRETS (Initial Read) ---
+          echo "🔐 Fetching initial secrets..."
+          # The API_KEY item's 'username' field holds the key value
+          API_KEY_CURRENT_VALUE=$(op read "op://${VAULT}/${ITEM_TO_UPDATE}/username")
+          echo "API_KEY initial value: ${API_KEY_CURRENT_VALUE:0:4}..." 
+          echo "✅ Initial secrets fetched successfully."
           
-          # --- 1. WRITE/CREATE NEW SECRET (Robust JSON Pipe Method - SUCCESSFUL) ---
+          # --- 2. CREATE NEW SECRET (For Demo Consistency) ---
           NEW_PASSWORD="ci_secret_$(date +%s)"
-          echo "✨ Creating a new 'CI_TEMP_LOGIN' item using JSON pipe..."
-          op item create --vault "1password PoC" - << EOF
+          echo "✨ Creating a temporary 'CI_TEMP_LOGIN' item (Successful test)..."
+          # ... (Create command as before)
+          op item create --vault "${VAULT}" - << EOF
           {
             "title": "CI_TEMP_LOGIN",
             "category": "LOGIN",
@@ -53,27 +59,27 @@ jobs:
           echo "✅ New secret 'CI_TEMP_LOGIN' created successfully."
           
           # ----------------------------------------------------------------------
-          # --- 2. EDIT/UPDATE EXISTING SECRET (Robust JSON Pipe Method) ---
+          # --- 3. ROTATE/UPDATE EXISTING API_KEY (JSON Method) ---
           # ----------------------------------------------------------------------
-          echo "✏️ Updating the 'CI_TEMP_LOGIN' item using JSON pipe..."
+          TODAYS_DATE=$(date +%Y-%m-%d)
+          NEW_API_KEY_VALUE="${API_KEY_CURRENT_VALUE}_${TODAYS_DATE}"
+          
+          echo "✏️ Updating the '${ITEM_TO_UPDATE}' to append date: ${TODAYS_DATE}..."
 
           # a) Fetch the current item's JSON
-          ITEM_UUID="CI_TEMP_LOGIN"
-          VAULT="1password PoC"
-          CURRENT_JSON=$(op item get "${ITEM_UUID}" --vault "${VAULT}" --format json)
+          CURRENT_JSON=$(op item get "${ITEM_TO_UPDATE}" --vault "${VAULT}" --format json)
           
-          # b) Use jq to update the fields in the JSON structure
-          #    We update the username field and add a new tag
-          UPDATED_USERNAME="ci_runner_user_updated_$(date +%s)"
-          
+          # b) Use jq to update the 'username' field in the JSON structure
+          #    We use the 'username' field because that is where the key is stored.
           UPDATED_JSON=$(echo "${CURRENT_JSON}" | jq \
-            --arg new_user "$UPDATED_USERNAME" \
-            '.fields |= map(if .id == "username" then .value = $new_user else . end) | .tags += ["ci-updated", "demo"]')
+            --arg new_val "$NEW_API_KEY_VALUE" \
+            '.fields |= map(if .id == "username" then .value = $new_val else . end)')
 
           # c) Pipe the modified JSON back to the edit command
-          echo "${UPDATED_JSON}" | op item edit "${ITEM_UUID}" --vault "${VAULT}" -
+          #    The dash (-) tells op item edit to read the JSON from STDIN.
+          echo "${UPDATED_JSON}" | op item edit "${ITEM_TO_UPDATE}" --vault "${VAULT}" -
             
-          echo "✅ Secret 'CI_TEMP_LOGIN' updated successfully."
+          echo "✅ Secret '${ITEM_TO_UPDATE}' updated successfully to: ${NEW_API_KEY_VALUE:0:4}..."
 
       - name: Manual trigger confirmation
         if: ${{ github.event_name == 'workflow_dispatch' }}
