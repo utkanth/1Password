@@ -25,39 +25,66 @@ jobs:
           op --version
           echo "✅ 1Password CLI installed successfully."
 
-      - name: Sign in, fetch, create, and update existing API_KEY (Fixing Date Fields)
+      - name: Demo: Create New Item and Rotate Existing API Key
         env:
+          # This token now has the correct permissions (View, Create, and Edit)
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
         run: |
+          echo "🔐 Authenticating using OP_SERVICE_ACCOUNT_TOKEN..."
+          
           # Define item names and vault name
           ITEM_TO_UPDATE="API_KEY"
           VAULT="1password PoC"
           
-          # --- 1. READ/FETCH (Initial Read) ---
+          # --- 1. READ/FETCH SECRETS (Working) ---
+          echo "🔐 Fetching initial secrets..."
           API_KEY_CURRENT_VALUE=$(op read "op://${VAULT}/${ITEM_TO_UPDATE}/username")
+          DEPLOY_TOKEN=$(op read "op://${VAULT}/DEPLOY_TOKEN/username")
+          echo "API_KEY initial value: ${API_KEY_CURRENT_VALUE:0:4}..." 
+          echo "DEPLOY_TOKEN successfully fetched: ${DEPLOY_TOKEN:0:4}..."
+          echo "✅ Initial secrets fetched successfully."
           
           # ----------------------------------------------------------------------
-          # --- 2. ROTATE/UPDATE EXISTING API_KEY (JSON Method - FIXED) ---
+          # --- 2. WRITE/CREATE NEW SECRET (Demonstrates successful WRITE operation) ---
+          # ----------------------------------------------------------------------
+          NEW_PASSWORD="ci_secret_$(date +%s)"
+          echo "✨ Creating a new 'CI_TEMP_LOGIN' item using JSON pipe..."
+          
+          op item create --vault "${VAULT}" - << EOF
+          {
+            "title": "CI_TEMP_LOGIN",
+            "category": "LOGIN",
+            "fields": [
+              {"id": "username", "value": "ci_runner_user"},
+              {"id": "password", "value": "${NEW_PASSWORD}"}
+            ]
+          }
+          EOF
+          echo "✅ New secret 'CI_TEMP_LOGIN' created successfully."
+          
+          # ----------------------------------------------------------------------
+          # --- 3. ROTATE/UPDATE EXISTING API_KEY (Fixes Expiry Issue) ---
           # ----------------------------------------------------------------------
           TODAYS_DATE=$(date +%Y-%m-%d)
-          NEW_API_KEY_VALUE="${API_KEY_CURRENT_VALUE%_*}_${TODAYS_DATE}"
+          # We check if the date is already appended to avoid double-appending.
+          # We use a simple shell substitution to remove any existing date part (e.g., _2025-10-24)
+          BASE_API_KEY_VALUE=$(echo "$API_KEY_CURRENT_VALUE" | sed 's/_[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}$//')
+          NEW_API_KEY_VALUE="${BASE_API_KEY_VALUE}_${TODAYS_DATE}"
           
           echo "✏️ Updating the '${ITEM_TO_UPDATE}' to append date: ${TODAYS_DATE}..."
 
           # a) Fetch the current item's JSON
           CURRENT_JSON=$(op item get "${ITEM_TO_UPDATE}" --vault "${VAULT}" --format json)
           
-          # b) Use jq to update ONLY the username field's value. 
-          #    This logic ensures all other fields (including valid from/expires) 
-          #    are passed through unmodified, retaining their original values.
+          # b) Use jq to update ONLY the 'username' field's value. 
+          #    The 'else .' ensures ALL other fields (including date fields) 
+          #    are passed through unmodified, preventing the 'expires: 0' reset.
           UPDATED_JSON=$(echo "${CURRENT_JSON}" | jq \
             --arg new_val "$NEW_API_KEY_VALUE" \
             '.fields |= map(
               if .label == "username" then 
-                # This only updates the VALUE of the username field
                 .value = $new_val 
               else 
-                # This passes ALL other fields (including date fields) through without modification
                 . 
               end
             )')
@@ -65,7 +92,7 @@ jobs:
           # c) Pipe the modified JSON back to the edit command
           echo "${UPDATED_JSON}" | op item edit "${ITEM_TO_UPDATE}" --vault "${VAULT}" -
             
-          echo "✅ Secret '${ITEM_TO_UPDATE}' updated successfully."
+          echo "✅ Secret '${ITEM_TO_UPDATE}' rotated and updated successfully."
 
       - name: Manual trigger confirmation
         if: ${{ github.event_name == 'workflow_dispatch' }}
