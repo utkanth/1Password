@@ -32,7 +32,7 @@ jobs:
           echo "🔐 Signing in with 1Password service account..."
           
           # Sign in using the service account token
-          # eval $(op signin --raw)
+          eval $(op signin --raw)
           
           echo "✅ Signed in successfully."
 
@@ -46,16 +46,17 @@ jobs:
           # Write the fetched secrets back to 1Password
           echo "🔐 Writing secrets back to 1Password..."
 
-          # Create a new item called NEW_API_KEY with the username as NEW_API_KEY
+          # Create a new API_KEY item (if it doesn't exist)
           op item create \
-            --title "NEW_API_KEY" \
             --vault "1password PoC" \
-            'username=NEW_API_KEY'  # Corrected: Using the direct key=value format
+            --title "NEW_API_KEY" \
+            --username "NEW_API_KEY" \
+            --password "new_secret_password_123"  # Replace with actual secret
 
           # Edit the existing API_KEY item and change its username to "API_KEYedited123"
           op item edit "API_KEY" \
             --vault "1password PoC" \
-            'username=API_KEYedited123'  # Corrected: Using the direct key=value format
+            --username "API_KEYedited123"
 
           echo "✅ Secrets written and updated successfully."
 
