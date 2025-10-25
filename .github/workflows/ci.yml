@@ -29,6 +29,7 @@ jobs:
         env:
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
         run: |
+          set -e  # Exit on any error for better debugging
           echo "🔐 Signing in with 1Password service account..."
           
           # Sign in using the service account token
@@ -46,17 +47,37 @@ jobs:
           # Write the fetched secrets back to 1Password
           echo "🔐 Writing secrets back to 1Password..."
 
-          # Create a new API_KEY item (if it doesn't exist)
-          op item create \
-            --vault "1password PoC" \
-            --title "NEW_API_KEY" \
-            --username "NEW_API_KEY" \
-            --password "new_secret_password_123"  # Replace with actual secret
+          # Create a new API_KEY item (if it doesn't exist) - using HJSON template
+          if ! op item list --vault "1password PoC" --title "NEW_API_KEY" >/dev/null 2>&1; then
+            echo "📝 Creating new item 'NEW_API_KEY'..."
+            op item create \
+              --vault "1password PoC" \
+              --category Login \
+              --tags "demo,ci" \
+              --template '{
+                title: "NEW_API_KEY",
+                section: General,
+                username: "demo_user",
+                password: { value: "new_api_key_value_here_$(date +%s)" }  # Dynamic value with timestamp
+              }'
+            echo "✅ Item 'NEW_API_KEY' created successfully."
+          else
+            echo "ℹ️ Item 'NEW_API_KEY' already exists, skipping creation."
+          fi
 
-          # Edit the existing API_KEY item and change its username to "API_KEYedited123"
-          op item edit "API_KEY" \
-            --vault "1password PoC" \
-            --username "API_KEYedited123"
+          # Edit the existing API_KEY item (only if it exists) and update the username field
+          if op item list --vault "1password PoC" --title "API_KEY" >/dev/null 2>&1; then
+            echo "✏️ Editing existing item 'API_KEY'..."
+            op item edit \
+              --vault "1password PoC" \
+              "API_KEY" \
+              --template '{
+                username: "API_KEY_edited_123_$(date +%s)"
+              }'
+            echo "✅ Item 'API_KEY' updated successfully."
+          else
+            echo "⚠️ Item 'API_KEY' not found, skipping edit."
+          fi
 
           echo "✅ Secrets written and updated successfully."
 
