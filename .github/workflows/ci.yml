@@ -27,40 +27,32 @@ jobs:
 
       - name: Sign in, fetch and write secrets to 1Password (same session)
         env:
-          # This environment variable implicitly handles authentication for all 'op' commands in this step.
+          # The Service Account Token handles authentication implicitly.
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
         run: |
           echo "🔐 Authenticating using OP_SERVICE_ACCOUNT_TOKEN..."
-          # NOTE: 'op signin' is REMOVED. The Service Account Token handles authentication automatically.
 
           # --- READ/FETCH SECRETS ---
           echo "🔐 Fetching secrets..."
-          # The 'op read' command works because the OP_SERVICE_ACCOUNT_TOKEN is set.
           API_KEY=$(op read "op://1password PoC/API_KEY/username")
           DEPLOY_TOKEN=$(op read "op://1password PoC/DEPLOY_TOKEN/username")
           echo "API_KEY: $API_KEY"
           echo "DEPLOY_TOKEN: $DEPLOY_TOKEN"
           echo "✅ Secrets fetched successfully."
           
-          # --- WRITE/CREATE NEW SECRET ---
+          # ----------------------------------------------------------------------
+          # --- WRITE/CREATE NEW SECRET (Single-line Command for Robustness) ---
+          # ----------------------------------------------------------------------
           echo "✨ Creating a new 'TEMP_SECRET' Login item..."
-          # Corrected op item create syntax to avoid JSON pipe error.
-          # We use single quotes around the entire list of fields to ensure the shell handles the arguments correctly.
-          op item create \
-            --vault "1password PoC" \
-            --title "TEMP_SECRET" \
-            --category "Login" \
-            'username=temporary_user' \
-            "password=a_new_secret_value_$(date +%s)"
+          op item create --vault "1password PoC" --title "TEMP_SECRET" --category "Login" "username=temporary_user" "password=a_new_secret_value_$(date +%s)"
             
           echo "✅ New secret 'TEMP_SECRET' created successfully."
           
-          # --- EDIT/UPDATE EXISTING SECRET ---
+          # ----------------------------------------------------------------------
+          # --- EDIT/UPDATE EXISTING SECRET (Single-line Command for Robustness) ---
+          # ----------------------------------------------------------------------
           echo "✏️ Updating the username field for 'API_KEY'..."
-          # Edits the existing item named 'API_KEY' to change its 'username' field.
-          op item edit "API_KEY" \
-            --vault "1password PoC" \
-            "username=UpdatedUser_$(date +%s)"
+          op item edit "API_KEY" --vault "1password PoC" "username=UpdatedUser_$(date +%s)"
             
           echo "✅ Secret 'API_KEY' updated successfully."
 
