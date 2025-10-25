@@ -32,14 +32,34 @@ jobs:
           set -e  # Exit on any error for better debugging
           echo "🔐 Signing in with 1Password service account..."
           
-          # Sign in using the service account token
-          eval $(op signin --raw)
+          # Verify token is set
+          if [ -z "$OP_SERVICE_ACCOUNT_TOKEN" ]; then
+            echo "❌ Error: OP_SERVICE_ACCOUNT_TOKEN is not set."
+            exit 1
+          fi
+          echo "✅ OP_SERVICE_ACCOUNT_TOKEN is set (value obfuscated)."
+
+          # Sign in using the service account token explicitly
+          SESSION_TOKEN=$(op signin --account service-account --token "$OP_SERVICE_ACCOUNT_TOKEN" --raw)
+          if [ $? -ne 0 ]; then
+            echo "❌ Error: Failed to sign in with 1Password service account."
+            exit 1
+          fi
+          export OP_SESSION_service_account="$SESSION_TOKEN"
           
           echo "✅ Signed in successfully."
 
           echo "🔐 Fetching secrets..."
-          API_KEY=$(op read "op://1password PoC/API_KEY/username")
-          DEPLOY_TOKEN=$(op read "op://1password PoC/DEPLOY_TOKEN/username")
+          API_KEY=$(op read "op://1password PoC/API_KEY/username" 2> read_error.log)
+          if [ $? -ne 0 ]; then
+            echo "❌ Error fetching API_KEY: $(cat read_error.log)"
+            exit 1
+          fi
+          DEPLOY_TOKEN=$(op read "op://1password PoC/DEPLOY_TOKEN/username" 2> read_error.log)
+          if [ $? -ne 0 ]; then
+            echo "❌ Error fetching DEPLOY_TOKEN: $(cat read_error.log)"
+            exit 1
+          fi
           echo "API_KEY: $API_KEY"
           echo "DEPLOY_TOKEN: $DEPLOY_TOKEN"
           echo "✅ Secrets fetched successfully."
@@ -56,10 +76,16 @@ jobs:
               --tags "demo,ci" \
               --template '{
                 title: "NEW_API_KEY",
-                section: General,
-                username: "demo_user",
-                password: { value: "new_api_key_value_here_$(date +%s)" }  # Dynamic value with timestamp
-              }'
+                sections: [{ name: "General" }],
+                fields: [
+                  { id: "username", value: "demo_user" },
+                  { id: "password", value: "new_api_key_value_here_$(date +%s)" }
+                ]
+              }' < /dev/null 2> create_error.log
+            if [ $? -ne 0 ]; then
+              echo "❌ Error creating item 'NEW_API_KEY': $(cat create_error.log)"
+              exit 1
+            fi
             echo "✅ Item 'NEW_API_KEY' created successfully."
           else
             echo "ℹ️ Item 'NEW_API_KEY' already exists, skipping creation."
@@ -72,8 +98,14 @@ jobs:
               --vault "1password PoC" \
               "API_KEY" \
               --template '{
-                username: "API_KEY_edited_123_$(date +%s)"
-              }'
+                fields: [
+                  { id: "username", value: "API_KEY_edited_123_$(date +%s)" }
+                ]
+              }' < /dev/null 2> edit_error.log
+            if [ $? -ne 0 ]; then
+              echo "❌ Error editing item 'API_KEY': $(cat edit_error.log)"
+              exit 1
+            fi
             echo "✅ Item 'API_KEY' updated successfully."
           else
             echo "⚠️ Item 'API_KEY' not found, skipping edit."
