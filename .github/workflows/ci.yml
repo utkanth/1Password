@@ -14,7 +14,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install dependencies
-        run: sudo apt update && sudo apt install -y unzip curl
+        run: sudo apt update && sudo apt install -y unzip curl jq # Ensure jq is installed for JSON processing
 
       - name: Install 1Password CLI (direct download)
         run: |
@@ -34,19 +34,29 @@ jobs:
           # Define item names and vault name
           ITEM_TO_UPDATE="API_KEY"
           VAULT="1password PoC"
+          DEPLOY_TOKEN_ITEM="DEPLOY_TOKEN"
 
-          # --- 1. READ/FETCH SECRETS (Initial Read) ---
+          # ----------------------------------------------------------------------
+          # --- 1. READ/FETCH SECRETS (Initial Read and Clear Display) ---
+          # ----------------------------------------------------------------------
           echo "🔐 Fetching initial secrets..."
-          # The API_KEY item's 'username' field holds the key value
+          
+          # Read API_KEY value and display first 10 characters for confirmation
           API_KEY_CURRENT_VALUE=$(op read "op://${VAULT}/${ITEM_TO_UPDATE}/username")
           echo "API_KEY initial value: ${API_KEY_CURRENT_VALUE:0:10}..." 
+          
+          # Read DEPLOY_TOKEN value and display first 10 characters for confirmation
+          DEPLOY_TOKEN_VALUE=$(op read "op://${VAULT}/${DEPLOY_TOKEN_ITEM}/username")
+          echo "DEPLOY_TOKEN initial value: ${DEPLOY_TOKEN_VALUE:0:10}..."
+          
           echo "✅ Initial secrets fetched successfully."
           
-          # --- 2. CREATE NEW SECRET (For Demo Consistency) ---
+          # ----------------------------------------------------------------------
+          # --- 2. WRITE/CREATE NEW SECRET (Demonstrates successful WRITE operation) ---
+          # ----------------------------------------------------------------------
           NEW_PASSWORD="ci_secret_$(date +%s)"
           echo "✨ Creating a temporary 'CI_TEMP_LOGIN' item (Successful test)..."
           
-          # Use heredoc for op item create
           op item create --vault "${VAULT}" - << EOF
           {
             "title": "CI_TEMP_LOGIN",
@@ -74,7 +84,7 @@ jobs:
           CURRENT_JSON=$(op item get "${ITEM_TO_UPDATE}" --vault "${VAULT}" --format json)
           
           # b) Use jq to update ONLY the 'username' field's value. 
-          #    The 'else .' passes all other fields (including date fields) unmodified.
+          #    The 'else .' passes all other fields (including date fields) unmodified to prevent reset.
           UPDATED_JSON=$(echo "${CURRENT_JSON}" | jq \
             --arg new_val "$NEW_API_KEY_VALUE" \
             '.fields |= map(
@@ -94,5 +104,3 @@ jobs:
         if: ${{ github.event_name == 'workflow_dispatch' }}
         run: |
           echo "🧑‍💻 Workflow triggered manually via the 'Run workflow' button."
-          echo "Branch: ${{ github.ref }}"
-          echo "Commit: ${{ github.sha }}"
