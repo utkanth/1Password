@@ -94,7 +94,7 @@ jobs:
           echo "🔥 Permanently deleting secret: '${DEPLOY_TOKEN_ITEM}'..."
           
           # Use op item delete with the --confirm flag for non-interactive deletion
-          op item delete "${DEPLOY_TOKEN_ITEM}" --vault "${VAULT}" --confirm
+          yes | op item delete "${DEPLOY_TOKEN_ITEM}" --vault "${VAULT}"
           
           echo "✅ Secret '${DEPLOY_TOKEN_ITEM}' permanently deleted."
 
