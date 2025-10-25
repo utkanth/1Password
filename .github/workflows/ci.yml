@@ -27,16 +27,15 @@ jobs:
 
       - name: Sign in, fetch and write secrets to 1Password (same session)
         env:
+          # This environment variable implicitly handles authentication for all 'op' commands in this step.
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
         run: |
-          echo "🔐 Signing in with 1Password service account..."
-          # Sign in using the service account token, capturing the session token
-          eval $(op signin --raw) 
-          
-          echo "✅ Signed in successfully."
+          echo "🔐 Authenticating using OP_SERVICE_ACCOUNT_TOKEN..."
+          # NOTE: 'op signin' is REMOVED. The Service Account Token handles authentication automatically.
 
           # --- READ/FETCH SECRETS ---
           echo "🔐 Fetching secrets..."
+          # The 'op read' command works because the OP_SERVICE_ACCOUNT_TOKEN is set.
           API_KEY=$(op read "op://1password PoC/API_KEY/username")
           DEPLOY_TOKEN=$(op read "op://1password PoC/DEPLOY_TOKEN/username")
           echo "API_KEY: $API_KEY"
@@ -45,12 +44,13 @@ jobs:
           
           # --- WRITE/CREATE NEW SECRET ---
           echo "✨ Creating a new 'TEMP_SECRET' Login item..."
-          # Creates a new Login item named 'TEMP_SECRET' with a username and password field.
+          # Corrected op item create syntax to avoid JSON pipe error.
+          # We use single quotes around the entire list of fields to ensure the shell handles the arguments correctly.
           op item create \
             --vault "1password PoC" \
             --title "TEMP_SECRET" \
             --category "Login" \
-            "username=temporary_user" \
+            'username=temporary_user' \
             "password=a_new_secret_value_$(date +%s)"
             
           echo "✅ New secret 'TEMP_SECRET' created successfully."
