@@ -46,16 +46,16 @@ jobs:
           # Write the fetched secrets back to 1Password
           echo "🔐 Writing secrets back to 1Password..."
 
-          # Create a new item (if it doesn't exist) with the username value as API_KEY
+          # Create a new item called NEW_API_KEY
           op item create \
             --title "NEW_API_KEY" \
             --vault "1password PoC" \
-            'username=NEW_API_KEY'  # Assuming the item has the key "username" with a value of "API_KEY"
+            --fields "username=NEW_API_KEY"  # Corrected: Using --fields for setting item fields
 
-          # Edit the existing item by updating the username value to "API_KEYedited123"
+          # Edit the existing API_KEY item and change its username to API_KEYedited123
           op item edit "API_KEY" \
             --vault "1password PoC" \
-            'username=API_KEYedited123'
+            --fields "username=API_KEYedited123"  # Corrected: Using --fields to update fields
 
           echo "✅ Secrets written and updated successfully."
 
