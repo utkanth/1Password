@@ -25,29 +25,21 @@ jobs:
           op --version
           echo "✅ 1Password CLI installed successfully."
 
-      - name: Sign in, fetch and write secrets to 1Password (same session)
+      - name: Sign in, fetch, create, and edit secrets with Service Account
         env:
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
         run: |
           echo "🔐 Authenticating using OP_SERVICE_ACCOUNT_TOKEN..."
-
+          
           # --- READ/FETCH SECRETS (Working) ---
           echo "🔐 Fetching secrets..."
           API_KEY=$(op read "op://1password PoC/API_KEY/username")
           DEPLOY_TOKEN=$(op read "op://1password PoC/DEPLOY_TOKEN/username")
-          echo "API_KEY: $API_KEY"
-          echo "DEPLOY_TOKEN: $DEPLOY_TOKEN"
           echo "✅ Secrets fetched successfully."
           
-          # ----------------------------------------------------------------------
-          # --- WRITE/CREATE NEW SECRET (Using Robust JSON Pipe Method) ---
-          # ----------------------------------------------------------------------
+          # --- 1. WRITE/CREATE NEW SECRET (Robust JSON Pipe Method - SUCCESSFUL) ---
           NEW_PASSWORD="ci_secret_$(date +%s)"
-
           echo "✨ Creating a new 'CI_TEMP_LOGIN' item using JSON pipe..."
-          
-          # Use a HEREDOC to create a valid JSON item structure and pipe it to op item create
-          # This guarantees the CLI receives valid input and bypasses shell parsing errors.
           op item create --vault "1password PoC" - << EOF
           {
             "title": "CI_TEMP_LOGIN",
@@ -58,19 +50,28 @@ jobs:
             ]
           }
           EOF
-            
           echo "✅ New secret 'CI_TEMP_LOGIN' created successfully."
           
           # ----------------------------------------------------------------------
-          # --- EDIT/UPDATE EXISTING SECRET (Using Positional Edit) ---
+          # --- 2. EDIT/UPDATE EXISTING SECRET (Robust JSON Pipe Method) ---
           # ----------------------------------------------------------------------
-          echo "✏️ Updating the 'CI_TEMP_LOGIN' item..."
-          # The edit command often works reliably with positional arguments, 
-          # as it is not ambiguous about looking for piped input.
-          op item edit "CI_TEMP_LOGIN" \
-            --vault "1password PoC" \
-            "username=updated_user_$(date +%s)" \
-            --tags ci-updated,demo
+          echo "✏️ Updating the 'CI_TEMP_LOGIN' item using JSON pipe..."
+
+          # a) Fetch the current item's JSON
+          ITEM_UUID="CI_TEMP_LOGIN"
+          VAULT="1password PoC"
+          CURRENT_JSON=$(op item get "${ITEM_UUID}" --vault "${VAULT}" --format json)
+          
+          # b) Use jq to update the fields in the JSON structure
+          #    We update the username field and add a new tag
+          UPDATED_USERNAME="ci_runner_user_updated_$(date +%s)"
+          
+          UPDATED_JSON=$(echo "${CURRENT_JSON}" | jq \
+            --arg new_user "$UPDATED_USERNAME" \
+            '.fields |= map(if .id == "username" then .value = $new_user else . end) | .tags += ["ci-updated", "demo"]')
+
+          # c) Pipe the modified JSON back to the edit command
+          echo "${UPDATED_JSON}" | op item edit "${ITEM_UUID}" --vault "${VAULT}" -
             
           echo "✅ Secret 'CI_TEMP_LOGIN' updated successfully."
 
