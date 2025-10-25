@@ -39,7 +39,7 @@ jobs:
           echo "🔐 Fetching initial secrets..."
           # The API_KEY item's 'username' field holds the key value
           API_KEY_CURRENT_VALUE=$(op read "op://${VAULT}/${ITEM_TO_UPDATE}/username")
-          echo "API_KEY initial value: ${API_KEY_CURRENT_VALUE:0:4}..." 
+          echo "API_KEY initial value: ${API_KEY_CURRENT_VALUE:0:10}..." 
           echo "✅ Initial secrets fetched successfully."
           
           # --- 2. CREATE NEW SECRET (For Demo Consistency) ---
