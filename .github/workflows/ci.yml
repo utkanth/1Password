@@ -14,16 +14,14 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install dependencies
-        run: sudo apt update && sudo apt install -y unzip curl jq # Ensure jq is installed for JSON processing
+        run: sudo apt update && sudo apt install -y unzip curl jq
 
       - name: Install 1Password CLI (direct download)
         run: |
-          echo "🔧 Downloading and installing 1Password CLI..."
           curl -sSL https://cache.agilebits.com/dist/1P/op2/pkg/v2.30.3/op_linux_amd64_v2.30.3.zip -o op.zip
           unzip -q op.zip
           sudo mv op /usr/local/bin/
           op --version
-          echo "✅ 1Password CLI installed successfully."
 
       - name: Sign in, fetch, create, update, and delete secrets
         env:
@@ -31,33 +29,25 @@ jobs:
         run: |
           echo "🔐 Authenticating using OP_SERVICE_ACCOUNT_TOKEN..."
           
-          # Define item names and vault name
           ITEM_TO_UPDATE="API_KEY"
           VAULT="1password PoC"
-          DEPLOY_TOKEN_ITEM="DEPLOY_TOKEN" # This is the item we will delete
-          TEMP_ITEM_TO_KEEP="CI_TEMP_LOGIN" # Item created and preserved for demo
+          DEPLOY_TOKEN_ITEM="DEPLOY_TOKEN"
+          TEMP_ITEM_TO_KEEP="CI_TEMP_LOGIN"
 
           # ----------------------------------------------------------------------
-          # --- 1. READ/FETCH SECRETS (Initial Read) ---
+          # --- 1. READ/FETCH SECRETS ---
           # ----------------------------------------------------------------------
-          echo "🔐 Fetching initial secrets..."
+          echo "📖 Reading from Vault..."
           
-          # Read API_KEY value and display first 10 characters
           API_KEY_CURRENT_VALUE=$(op read "op://${VAULT}/${ITEM_TO_UPDATE}/username")
-          echo "API_KEY initial value: ${API_KEY_CURRENT_VALUE:0:10}..." 
-          
-          # Read DEPLOY_TOKEN value and display first 10 characters
           DEPLOY_TOKEN_VALUE=$(op read "op://${VAULT}/${DEPLOY_TOKEN_ITEM}/username")
-          echo "DEPLOY_TOKEN initial value: ${DEPLOY_TOKEN_VALUE:0:10}..."
-          
-          echo "✅ Initial secrets fetched successfully."
-          
+
           # ----------------------------------------------------------------------
-          # --- 2. WRITE/CREATE NEW SECRET (Item remains for demonstration) ---
+          # --- 2. CREATE NEW SECRET ---
           # ----------------------------------------------------------------------
+          echo "✍️ Writing into Vault..."
+          
           NEW_PASSWORD="ci_secret_$(date +%s)"
-          echo "✨ Creating a temporary '${TEMP_ITEM_TO_KEEP}' item (Will remain in vault)..."
-          
           op item create --vault "${VAULT}" - << EOF
           {
             "title": "${TEMP_ITEM_TO_KEEP}",
@@ -68,16 +58,15 @@ jobs:
             ]
           }
           EOF
-          echo "✅ New secret '${TEMP_ITEM_TO_KEEP}' created successfully."
           
           # ----------------------------------------------------------------------
-          # --- 3. ROTATE/UPDATE EXISTING API_KEY (Update) ---
+          # --- 3. UPDATE EXISTING SECRET ---
           # ----------------------------------------------------------------------
+          echo "🔄 Updating in Vault..."
+          
           TODAYS_DATE=$(date +%Y-%m-%d)
           BASE_API_KEY_VALUE=$(echo "$API_KEY_CURRENT_VALUE" | sed 's/_[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}$//')
           NEW_API_KEY_VALUE="${BASE_API_KEY_VALUE}_${TODAYS_DATE}"
-          
-          echo "✏️ Updating the '${ITEM_TO_UPDATE}' to append date: ${TODAYS_DATE}..."
 
           CURRENT_JSON=$(op item get "${ITEM_TO_UPDATE}" --vault "${VAULT}" --format json)
           UPDATED_JSON=$(echo "${CURRENT_JSON}" | jq \
@@ -86,19 +75,13 @@ jobs:
 
           echo "${UPDATED_JSON}" | op item edit "${ITEM_TO_UPDATE}" --vault "${VAULT}" -
             
-          echo "✅ Secret '${ITEM_TO_UPDATE}' rotated and updated successfully."
-
           # ----------------------------------------------------------------------
-          # --- 4. DELETE EXISTING SECRET (High-Impact Deletion) ---
+          # --- 4. DELETE EXISTING SECRET ---
           # ----------------------------------------------------------------------
-          echo "🔥 Permanently deleting secret: '${DEPLOY_TOKEN_ITEM}'..."
+          echo "🔥 Deleting from Vault..."
           
-          # Use op item delete with the --confirm flag for non-interactive deletion
           yes | op item delete "${DEPLOY_TOKEN_ITEM}" --vault "${VAULT}"
-          
-          echo "✅ Secret '${DEPLOY_TOKEN_ITEM}' permanently deleted."
 
       - name: Manual trigger confirmation
         if: ${{ github.event_name == 'workflow_dispatch' }}
-        run: |
-          echo "🧑‍💻 Workflow triggered manually via the 'Run workflow' button."
+        run: echo "🧑‍💻 Workflow triggered manually via the 'Run workflow' button."
