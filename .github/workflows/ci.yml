@@ -42,13 +42,16 @@ jobs:
           API_KEY_CURRENT_VALUE=$(op read "op://${VAULT}/${ITEM_TO_UPDATE}/username")
           DEPLOY_TOKEN_VALUE=$(op read "op://${VAULT}/${DEPLOY_TOKEN_ITEM}/username")
 
+          echo "• API_KEY: ${API_KEY_CURRENT_VALUE:0:10}..."
+          echo "• DEPLOY_TOKEN: ${DEPLOY_TOKEN_VALUE:0:10}..."
+
           # ----------------------------------------------------------------------
           # --- 2. CREATE NEW SECRET ---
           # ----------------------------------------------------------------------
           echo "✍️ Writing into Vault..."
           
           NEW_PASSWORD="ci_secret_$(date +%s)"
-          op item create --vault "${VAULT}" - << EOF
+          op item create --vault "${VAULT}" - >/dev/null 2>&1 << EOF
           {
             "title": "${TEMP_ITEM_TO_KEEP}",
             "category": "LOGIN",
@@ -58,7 +61,8 @@ jobs:
             ]
           }
           EOF
-          
+          echo "• Created item: ${TEMP_ITEM_TO_KEEP}"
+
           # ----------------------------------------------------------------------
           # --- 3. UPDATE EXISTING SECRET ---
           # ----------------------------------------------------------------------
@@ -73,14 +77,16 @@ jobs:
             --arg new_val "$NEW_API_KEY_VALUE" \
             '.fields |= map(if .id == "username" then .value = $new_val else . end)')
 
-          echo "${UPDATED_JSON}" | op item edit "${ITEM_TO_UPDATE}" --vault "${VAULT}" -
-            
+          echo "${UPDATED_JSON}" | op item edit "${ITEM_TO_UPDATE}" --vault "${VAULT}" - >/dev/null 2>&1
+          echo "• Updated ${ITEM_TO_UPDATE} → ${NEW_API_KEY_VALUE}"
+
           # ----------------------------------------------------------------------
           # --- 4. DELETE EXISTING SECRET ---
           # ----------------------------------------------------------------------
           echo "🔥 Deleting from Vault..."
           
-          yes | op item delete "${DEPLOY_TOKEN_ITEM}" --vault "${VAULT}"
+          yes | op item delete "${DEPLOY_TOKEN_ITEM}" --vault "${VAULT}" >/dev/null 2>&1
+          echo "• Deleted item: ${DEPLOY_TOKEN_ITEM}"
 
       - name: Manual trigger confirmation
         if: ${{ github.event_name == 'workflow_dispatch' }}
