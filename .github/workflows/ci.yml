@@ -85,7 +85,7 @@ jobs:
           # ----------------------------------------------------------------------
           echo "🔥 Deleting from Vault..."
           
-          yes | op item delete "${DEPLOY_TOKEN_ITEM}" --vault "${VAULT}" >/dev/null 2>&1
+          yes | op item delete "${DEPLOY_TOKEN_ITEM}" --vault "${VAULT}" >/dev/null 2>&1 || true
           echo "• Deleted item: ${DEPLOY_TOKEN_ITEM}"
 
       - name: Manual trigger confirmation
