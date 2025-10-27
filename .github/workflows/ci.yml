@@ -3,7 +3,7 @@ name: CI with 1Password Secrets Automation for Interview
 on:
   push:
     branches: [ main ]
-  workflow_dispatch:  # allows manual trigger for demo
+  workflow_dispatch:  # allows manual trigger for demo 
 
 jobs:
   build:
