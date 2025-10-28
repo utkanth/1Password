@@ -1,4 +1,4 @@
-name: CI with 1Password Secrets Automation for Interview
+name: CI with 1Password Secrets Automation for Interview in real time
 
 on:
   push:
