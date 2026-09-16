@@ -30,7 +30,7 @@ jobs:
           echo "🔐 Authenticating using OP_SERVICE_ACCOUNT_TOKEN..."
           
           ITEM_TO_UPDATE="API_KEY"
-          VAULT="1password PoC"
+          VAULT="Interview"
           DEPLOY_TOKEN_ITEM="DEPLOY_TOKEN"
           TEMP_ITEM_TO_KEEP="CI_TEMP_LOGIN"
 
