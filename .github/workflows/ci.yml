@@ -27,7 +27,7 @@ jobs:
         env:
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
         run: |
-          echo "🔐 Authenticating using OP_SERVICE_ACCOUNT_TOKEN..."
+          echo "Authenticating using OP_SERVICE_ACCOUNT_TOKEN..."
           
           ITEM_TO_UPDATE="API_KEY"
           VAULT="Interview"
@@ -37,7 +37,7 @@ jobs:
           # ----------------------------------------------------------------------
           # --- 1. READ/FETCH SECRETS ---
           # ----------------------------------------------------------------------
-          echo "📖 Reading from Vault..."
+          echo "Reading from Vault..."
           
           API_KEY_CURRENT_VALUE=$(op read "op://${VAULT}/${ITEM_TO_UPDATE}/username")
           DEPLOY_TOKEN_VALUE=$(op read "op://${VAULT}/${DEPLOY_TOKEN_ITEM}/username")
@@ -48,7 +48,7 @@ jobs:
           # ----------------------------------------------------------------------
           # --- 2. CREATE NEW SECRET ---
           # ----------------------------------------------------------------------
-          echo "✍️ Writing into Vault..."
+          echo "Writing into Vault..."
           
           NEW_PASSWORD="ci_secret_$(date +%s)"
           op item create --vault "${VAULT}" - >/dev/null 2>&1 << EOF
@@ -66,7 +66,7 @@ jobs:
           # ----------------------------------------------------------------------
           # --- 3. UPDATE EXISTING SECRET ---
           # ----------------------------------------------------------------------
-          echo "🔄 Updating in Vault..."
+          echo "Updating in Vault..."
           
           TODAYS_DATE=$(date +%Y-%m-%d)
           BASE_API_KEY_VALUE=$(echo "$API_KEY_CURRENT_VALUE" | sed 's/_[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}$//')
@@ -83,11 +83,11 @@ jobs:
           # ----------------------------------------------------------------------
           # --- 4. DELETE EXISTING SECRET ---
           # ----------------------------------------------------------------------
-          echo "🔥 Deleting from Vault..."
+          echo "Deleting from Vault..."
           
           printf 'y\n' | op item delete "${DEPLOY_TOKEN_ITEM}" --vault "${VAULT}" >/dev/null 2>&1 || true
           echo "• Deleted item: ${DEPLOY_TOKEN_ITEM}"
 
       - name: Manual trigger confirmation
         if: ${{ github.event_name == 'workflow_dispatch' }}
-        run: echo "🧑‍💻 Workflow triggered manually via the 'Run workflow' button."
+        run: echo "Workflow triggered manually via the 'Run workflow' button."
